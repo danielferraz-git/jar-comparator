@@ -1,0 +1,14 @@
+[
+  {"name": "japicmp.cmp.JarArchiveComparator", "allDeclaredConstructors": true, "allDeclaredMethods": true},
+  {"name": "japicmp.cmp.JarArchiveComparatorOptions", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true},
+  {"name": "japicmp.model.JApiClass", "allDeclaredMethods": true, "allDeclaredFields": true},
+  {"name": "japicmp.model.JApiMethod", "allDeclaredMethods": true, "allDeclaredFields": true},
+  {"name": "japicmp.model.JApiConstructor", "allDeclaredMethods": true, "allDeclaredFields": true},
+  {"name": "japicmp.model.JApiField", "allDeclaredMethods": true, "allDeclaredFields": true},
+  {"name": "japicmp.model.JApiAnnotation", "allDeclaredMethods": true, "allDeclaredFields": true},
+  {"name": "japicmp.model.JApiChangeStatus", "allDeclaredMethods": true},
+  {"name": "japicmp.model.AccessModifier", "allDeclaredMethods": true},
+  {"name": "javassist.ClassPool", "allDeclaredConstructors": true, "allDeclaredMethods": true},
+  {"name": "javassist.CtClass", "allDeclaredMethods": true},
+  {"name": "javassist.bytecode.ClassFile", "allDeclaredConstructors": true, "allDeclaredMethods": true}
+]
