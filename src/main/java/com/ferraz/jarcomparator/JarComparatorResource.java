@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import japicmp.model.JApiClass;
 import japicmp.model.AccessModifier;
 
@@ -20,6 +21,7 @@ public class JarComparatorResource {
     @Inject MavenCentralDownloader downloader;
     @Inject JarComparisonService comparisonService;
     @Inject HtmlReportGenerator htmlReportGenerator;
+    @Inject SourceDiffService sourceDiffService;
 
     @Inject @Location("form.html")  Template formTemplate;
     @Inject @Location("error.html") Template errorTemplate;
@@ -69,6 +71,27 @@ public class JarComparatorResource {
 
         } catch (Exception e) {
             return errorPage(e.getMessage());
+        }
+    }
+
+    @GET
+    @Path("/source-diff")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response sourceDiff(
+            @QueryParam("class") String className,
+            @QueryParam("old")   String oldVersion,
+            @QueryParam("new")   String newVersion) {
+        if (className == null || !className.matches("[\\w.$]+")) {
+            return Response.status(400).entity("Invalid class name").build();
+        }
+        try {
+            MavenCoordinates oldC = MavenCoordinates.parse(oldVersion);
+            MavenCoordinates newC = MavenCoordinates.parse(newVersion);
+            return sourceDiffService.diff(oldC, newC, className)
+                .map(diff -> Response.ok(diff).build())
+                .orElse(Response.status(404).entity("Source not available for this artifact").build());
+        } catch (Exception e) {
+            return Response.status(500).entity(e.getMessage()).build();
         }
     }
 

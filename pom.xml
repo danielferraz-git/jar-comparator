@@ -47,6 +47,11 @@
             <artifactId>quarkus-qute</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.github.java-diff-utils</groupId>
+            <artifactId>java-diff-utils</artifactId>
+            <version>4.12</version>
+        </dependency>
+        <dependency>
             <groupId>com.github.siom79.japicmp</groupId>
             <artifactId>japicmp</artifactId>
             <version>0.25.7</version>

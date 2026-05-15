@@ -10,7 +10,8 @@ public record ClassRow(
     boolean binaryCompatible,
     boolean sourceCompatible,
     boolean incompatible,
-    List<MemberGroup> groups
+    List<MemberGroup> groups,
+    String diffBlock
 ) {
     @TemplateData
     public record MemberGroup(
