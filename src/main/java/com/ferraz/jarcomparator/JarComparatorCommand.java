@@ -6,6 +6,8 @@ import jakarta.inject.Inject;
 import japicmp.model.*;
 import picocli.CommandLine.*;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -81,6 +83,14 @@ public class JarComparatorCommand implements Callable<Integer> {
         printTextReport(results, oldC, newC);
 
         if (htmlOutput != null) {
+            Path parent = htmlOutput.toAbsolutePath().getParent();
+            if (parent != null) {
+                try {
+                    Files.createDirectories(parent);
+                } catch (IOException e) {
+                    throw new JarComparatorException("Cannot create output directory: " + parent, e);
+                }
+            }
             htmlReportGenerator.generate(results, oldC, newC, htmlOutput);
             System.out.println("\nHTML report written to: " + htmlOutput.toAbsolutePath());
         }
