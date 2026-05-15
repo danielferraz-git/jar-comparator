@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API Comparison Report</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <style>
+    .badge-NEW       { background: #198754; }
+    .badge-REMOVED   { background: #dc3545; }
+    .badge-MODIFIED  { background: #fd7e14; }
+    .badge-UNCHANGED { background: #6c757d; }
+    .incompat        { background: #fff3cd; }
+    details summary  { cursor: pointer; }
+    #search          { max-width: 320px; }
+  </style>
+</head>
+<body class="p-4">
+  <h1 class="mb-1">API Comparison Report</h1>
+  <p class="text-muted mb-3">{oldCoord} &nbsp;&#8594;&nbsp; {newCoord}</p>
+
+  <div class="row g-3 mb-4">
+    <div class="col-auto">
+      <div class="card text-bg-secondary px-3 py-2"><b>{totalCount}</b> classes</div>
+    </div>
+    <div class="col-auto">
+      <div class="card text-bg-danger px-3 py-2"><b>{incompatibleCount}</b> incompatible</div>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <div class="btn-group" role="group" aria-label="Filter by change type">
+      <button type="button" class="btn btn-sm btn-outline-secondary active" data-filter="ALL">All</button>
+      <button type="button" class="btn btn-sm btn-outline-success" data-filter="NEW">New</button>
+      <button type="button" class="btn btn-sm btn-outline-danger" data-filter="REMOVED">Removed</button>
+      <button type="button" class="btn btn-sm btn-outline-warning" data-filter="MODIFIED">Modified</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="UNCHANGED">Unchanged</button>
+      <button type="button" class="btn btn-sm btn-danger" data-filter="INCOMPATIBLE">Incompatible</button>
+    </div>
+    <input id="search" type="search" class="form-control form-control-sm"
+           placeholder="Search class name…" aria-label="Search class name">
+  </div>
+
+  <table class="table table-sm table-bordered align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>Class</th>
+        <th>Change</th>
+        <th>Binary</th>
+        <th>Source</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody id="results-body">
+      {#for row in rows}
+      <tr data-status="{row.changeStatus}" data-incompat="{row.incompatible}"
+          class="{#if row.incompatible}incompat{/if}">
+        <td><code>{row.fullyQualifiedName}</code></td>
+        <td><span class="badge badge-{row.changeStatus}">{row.changeStatus}</span></td>
+        <td>
+          {#if row.binaryCompatible}
+          <span class="badge text-bg-success">yes</span>
+          {#else}
+          <span class="badge text-bg-danger">no</span>
+          {/if}
+        </td>
+        <td>
+          {#if row.sourceCompatible}
+          <span class="badge text-bg-success">yes</span>
+          {#else}
+          <span class="badge text-bg-danger">no</span>
+          {/if}
+        </td>
+        <td>
+          {#if row.changes.size > 0}
+          <details>
+            <summary>show ({row.changes.size})</summary>
+            <ul class="mb-0 mt-1">
+              {#for change in row.changes}
+              <li>
+                <span class="badge badge-{change.changeStatus}">{change.changeStatus}</span>
+                <span class="text-muted small">{change.kind}</span>
+                <code>{change.name}</code>
+              </li>
+              {/for}
+            </ul>
+          </details>
+          {/if}
+        </td>
+      </tr>
+      {/for}
+    </tbody>
+  </table>
+
+  <p id="no-results" class="text-muted" style="display:none">No rows match the current filter.</p>
+
+  <script>
+    (function () {
+      const body        = document.getElementById('results-body');
+      const rows        = Array.from(body.querySelectorAll('tr'));
+      const noResults   = document.getElementById('no-results');
+      const searchInput = document.getElementById('search');
+      const filterBtns  = document.querySelectorAll('[data-filter]');
+
+      let activeFilter = 'ALL';
+      let searchTerm   = '';
+
+      function applyFilters() {
+        let visible = 0;
+        rows.forEach(function (tr) {
+          const status   = tr.dataset.status;
+          const incompat = tr.dataset.incompat === 'true';
+          const name     = tr.querySelector('code').textContent.toLowerCase();
+
+          const matchesFilter =
+            activeFilter === 'ALL' ||
+            (activeFilter === 'INCOMPATIBLE' && incompat) ||
+            activeFilter === status;
+
+          const matchesSearch = name.includes(searchTerm);
+
+          const show = matchesFilter && matchesSearch;
+          tr.style.display = show ? '' : 'none';
+          if (show) visible++;
+        });
+        noResults.style.display = visible === 0 ? '' : 'none';
+      }
+
+      filterBtns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          filterBtns.forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          activeFilter = btn.dataset.filter;
+          applyFilters();
+        });
+      });
+
+      searchInput.addEventListener('input', function () {
+        searchTerm = searchInput.value.toLowerCase().trim();
+        applyFilters();
+      });
+    })();
+  </script>
+</body>
+</html>

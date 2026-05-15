@@ -43,6 +43,10 @@
             <artifactId>quarkus-rest</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-qute</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.github.siom79.japicmp</groupId>
             <artifactId>japicmp</artifactId>
             <version>0.25.7</version>
