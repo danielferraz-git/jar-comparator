@@ -12,6 +12,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class HtmlReportGenerator {
@@ -46,27 +50,34 @@ public class HtmlReportGenerator {
         boolean binaryOk = cls.isBinaryCompatible();
         boolean sourceOk = cls.isSourceCompatible();
 
-        List<ClassRow.MemberChange> changes = new ArrayList<>();
-        cls.getMethods().stream()
-            .filter(m -> m.getChangeStatus() != JApiChangeStatus.UNCHANGED)
-            .map(m -> new ClassRow.MemberChange("method", m.getName(), m.getChangeStatus().name()))
-            .forEach(changes::add);
-        cls.getConstructors().stream()
-            .filter(c -> c.getChangeStatus() != JApiChangeStatus.UNCHANGED)
-            .map(c -> new ClassRow.MemberChange("constructor", "<init>", c.getChangeStatus().name()))
-            .forEach(changes::add);
-        cls.getFields().stream()
-            .filter(f -> f.getChangeStatus() != JApiChangeStatus.UNCHANGED)
-            .map(f -> new ClassRow.MemberChange("field", f.getName(), f.getChangeStatus().name()))
-            .forEach(changes::add);
+        List<ClassRow.MemberGroup> groups = new ArrayList<>();
+        buildGroup("Methods",      cls.getMethods(),      JApiMethod::getChangeStatus,      JApiMethod::getName)     .ifPresent(groups::add);
+        buildGroup("Constructors", cls.getConstructors(), JApiConstructor::getChangeStatus, c -> "<init>")           .ifPresent(groups::add);
+        buildGroup("Fields",       cls.getFields(),       JApiField::getChangeStatus,       JApiField::getName)      .ifPresent(groups::add);
 
         return new ClassRow(
             cls.getFullyQualifiedName(),
             cls.getChangeStatus().name(),
-            binaryOk,
-            sourceOk,
-            !binaryOk || !sourceOk,
-            changes
+            binaryOk, sourceOk, !binaryOk || !sourceOk,
+            groups
         );
+    }
+
+    private <T> Optional<ClassRow.MemberGroup> buildGroup(
+            String kind,
+            List<T> items,
+            Function<T, JApiChangeStatus> statusFn,
+            Function<T, String> nameFn) {
+        List<ClassRow.MemberChange> members = items.stream()
+            .filter(i -> statusFn.apply(i) != JApiChangeStatus.UNCHANGED)
+            .map(i -> new ClassRow.MemberChange(nameFn.apply(i), statusFn.apply(i).name()))
+            .toList();
+        if (members.isEmpty()) return Optional.empty();
+        Set<String> statuses = members.stream()
+            .map(ClassRow.MemberChange::changeStatus)
+            .collect(Collectors.toSet());
+        boolean uniform = statuses.size() == 1;
+        return Optional.of(new ClassRow.MemberGroup(kind, members, uniform,
+            uniform ? statuses.iterator().next() : ""));
     }
 }

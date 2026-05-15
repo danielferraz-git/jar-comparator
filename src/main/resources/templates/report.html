@@ -11,8 +11,14 @@
     .badge-MODIFIED  { background: #fd7e14; }
     .badge-UNCHANGED { background: #6c757d; }
     .incompat        { background: #fff3cd; }
-    details summary  { cursor: pointer; }
     #search          { max-width: 320px; }
+    .toggle-btn {
+      background: none; border: none; padding: 0;
+      color: #6c757d; vertical-align: middle;
+      transition: transform .15s;
+    }
+    .toggle-btn.expanded { transform: rotate(90deg); }
+    tr[data-status]:has(.toggle-btn) { cursor: pointer; user-select: none; }
   </style>
 </head>
 <body class="p-4">
@@ -48,14 +54,22 @@
         <th>Change</th>
         <th>Binary</th>
         <th>Source</th>
-        <th>Details</th>
       </tr>
     </thead>
     <tbody id="results-body">
       {#for row in rows}
       <tr data-status="{row.changeStatus}" data-incompat="{row.incompatible}"
           class="{#if row.incompatible}incompat{/if}">
-        <td><code>{row.fullyQualifiedName}</code></td>
+        <td>
+          {#if row.groups.size > 0}
+          <button class="toggle-btn me-1" aria-label="Toggle details" aria-expanded="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+              <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+            </svg>
+          </button>
+          {/if}
+          <code class="class-name">{row.fullyQualifiedName}</code>
+        </td>
         <td><span class="badge badge-{row.changeStatus}">{row.changeStatus}</span></td>
         <td>
           {#if row.binaryCompatible}
@@ -71,23 +85,35 @@
           <span class="badge text-bg-danger">no</span>
           {/if}
         </td>
-        <td>
-          {#if row.changes.size > 0}
-          <details>
-            <summary>show ({row.changes.size})</summary>
-            <ul class="mb-0 mt-1">
-              {#for change in row.changes}
-              <li>
-                <span class="badge badge-{change.changeStatus}">{change.changeStatus}</span>
-                <span class="text-muted small">{change.kind}</span>
-                <code>{change.name}</code>
-              </li>
-              {/for}
-            </ul>
-          </details>
-          {/if}
+      </tr>
+      {#if row.groups.size > 0}
+      <tr class="detail-row" style="display:none">
+        <td colspan="4" class="px-4 py-3" style="background:#f8f9fa; border-top:0;">
+          <div class="d-flex flex-wrap gap-4">
+            {#for group in row.groups}
+            <div>
+              <div class="fw-semibold small text-muted text-uppercase mb-1">
+                {group.kind}
+                {#if group.uniform}
+                <span class="badge badge-{group.commonStatus} ms-1">{group.commonStatus}</span>
+                {/if}
+              </div>
+              <ul class="list-unstyled mb-0">
+                {#for member in group.members}
+                <li class="small d-flex align-items-center gap-1 mb-1">
+                  {#if !group.uniform}
+                  <span class="badge badge-{member.changeStatus}">{member.changeStatus}</span>
+                  {/if}
+                  <code>{member.name}</code>
+                </li>
+                {/for}
+              </ul>
+            </div>
+            {/for}
+          </div>
         </td>
       </tr>
+      {/if}
       {/for}
     </tbody>
   </table>
@@ -97,7 +123,7 @@
   <script>
     (function () {
       const body        = document.getElementById('results-body');
-      const rows        = Array.from(body.querySelectorAll('tr'));
+      const mainRows    = Array.from(body.querySelectorAll('tr[data-status]'));
       const noResults   = document.getElementById('no-results');
       const searchInput = document.getElementById('search');
       const filterBtns  = document.querySelectorAll('[data-filter]');
@@ -107,10 +133,10 @@
 
       function applyFilters() {
         let visible = 0;
-        rows.forEach(function (tr) {
+        mainRows.forEach(function (tr) {
           const status   = tr.dataset.status;
           const incompat = tr.dataset.incompat === 'true';
-          const name     = tr.querySelector('code').textContent.toLowerCase();
+          const name     = tr.querySelector('.class-name').textContent.toLowerCase();
 
           const matchesFilter =
             activeFilter === 'ALL' ||
@@ -118,9 +144,17 @@
             activeFilter === status;
 
           const matchesSearch = name.includes(searchTerm);
-
           const show = matchesFilter && matchesSearch;
+
           tr.style.display = show ? '' : 'none';
+
+          const detailRow = tr.nextElementSibling;
+          if (detailRow && detailRow.classList.contains('detail-row') && !show) {
+            detailRow.style.display = 'none';
+            const btn = tr.querySelector('.toggle-btn');
+            if (btn) { btn.classList.remove('expanded'); btn.setAttribute('aria-expanded', 'false'); }
+          }
+
           if (show) visible++;
         });
         noResults.style.display = visible === 0 ? '' : 'none';
@@ -138,6 +172,18 @@
       searchInput.addEventListener('input', function () {
         searchTerm = searchInput.value.toLowerCase().trim();
         applyFilters();
+      });
+
+      body.addEventListener('click', function (e) {
+        const mainRow = e.target.closest('tr[data-status]');
+        if (!mainRow) return;
+        const btn = mainRow.querySelector('.toggle-btn');
+        if (!btn) return;
+        const detailRow = mainRow.nextElementSibling;
+        if (!detailRow || !detailRow.classList.contains('detail-row')) return;
+        const expanded = btn.classList.toggle('expanded');
+        btn.setAttribute('aria-expanded', expanded);
+        detailRow.style.display = expanded ? '' : 'none';
       });
     })();
   </script>

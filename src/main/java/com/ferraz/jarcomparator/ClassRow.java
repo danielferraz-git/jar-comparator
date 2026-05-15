@@ -10,8 +10,16 @@ public record ClassRow(
     boolean binaryCompatible,
     boolean sourceCompatible,
     boolean incompatible,
-    List<MemberChange> changes
+    List<MemberGroup> groups
 ) {
     @TemplateData
-    public record MemberChange(String kind, String name, String changeStatus) {}
+    public record MemberGroup(
+        String kind,          // "Methods" | "Constructors" | "Fields"
+        List<MemberChange> members,
+        boolean uniform,      // all members share the same changeStatus
+        String commonStatus   // non-empty only when uniform=true
+    ) {}
+
+    @TemplateData
+    public record MemberChange(String name, String changeStatus) {}
 }
