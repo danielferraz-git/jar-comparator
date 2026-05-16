@@ -2,6 +2,8 @@ package com.ferraz.jarcomparator;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
+import org.jboss.logging.Logger;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -17,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @ApplicationScoped
 public class MavenCentralDownloader {
 
+    private static final Logger LOG = Logger.getLogger(MavenCentralDownloader.class);
     private static final String CENTRAL_BASE = "https://repo1.maven.org/maven2";
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -28,23 +31,27 @@ public class MavenCentralDownloader {
 
     public Path download(MavenCoordinates coords) {
         return cache.computeIfAbsent(coords.toString(), k -> {
-            System.out.printf("Downloading %s ...%n", coords);
+            LOG.infof("Downloading %s ...", coords);
             return fetchFile(buildUrl(coords), coords.artifactId())
-                .orElseThrow(() -> new RuntimeException(
-                    "Artifact not found on Maven Central: " + coords + "\n  URL: " + buildUrl(coords)));
+                .orElseThrow(() -> {
+                    String msg = "Artifact not found on Maven Central: " + coords + "\n  URL: " + buildUrl(coords);
+                    LOG.error(msg);
+                    return new RuntimeException(msg);
+                });
         });
     }
 
     public Optional<Path> downloadSources(MavenCoordinates coords) {
         String key = coords + ":sources";
         if (cache.containsKey(key)) return Optional.of(cache.get(key));
-        System.out.printf("Downloading sources %s ...%n", coords);
+        LOG.infof("Downloading sources %s ...", coords);
         Optional<Path> result = fetchFile(buildSourcesUrl(coords), coords.artifactId() + "-sources");
         result.ifPresent(p -> cache.put(key, p));
         return result;
     }
 
     private Optional<Path> fetchFile(String url, String prefix) {
+        LOG.debugf("Fetching file from URL: %s", url);
         HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .timeout(Duration.ofMinutes(5))
@@ -59,18 +66,22 @@ public class MavenCentralDownloader {
                 request, HttpResponse.BodyHandlers.ofFile(tempFile));
 
             if (response.statusCode() == 404) {
+                LOG.warnf("File not found (404): %s", url);
                 Files.deleteIfExists(tempFile);
                 return Optional.empty();
             }
             if (response.statusCode() != 200) {
                 Files.deleteIfExists(tempFile);
-                throw new RuntimeException(
-                    "Failed to download " + url + " (HTTP " + response.statusCode() + ")");
+                String errorMsg = "Failed to download " + url + " (HTTP " + response.statusCode() + ")";
+                LOG.error(errorMsg);
+                throw new RuntimeException(errorMsg);
             }
 
+            LOG.infof("Successfully downloaded: %s", url);
             return Optional.of(tempFile);
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+            LOG.errorf(e, "Error downloading %s", url);
             throw new RuntimeException("Error downloading " + url + ": " + e.getMessage(), e);
         }
     }

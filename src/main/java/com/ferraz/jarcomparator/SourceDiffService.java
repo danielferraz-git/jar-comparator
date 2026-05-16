@@ -5,6 +5,7 @@ import com.github.difflib.UnifiedDiffUtils;
 import com.github.difflib.patch.Patch;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.jboss.logging.Logger;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -20,10 +21,13 @@ import java.util.zip.ZipFile;
 @ApplicationScoped
 public class SourceDiffService {
 
+    private static final Logger LOG = Logger.getLogger(SourceDiffService.class);
+
     @Inject
     MavenCentralDownloader downloader;
 
     public Optional<String> diff(MavenCoordinates oldC, MavenCoordinates newC, String fqn) {
+        LOG.infof("Calculating source diff for %s between %s and %s", fqn, oldC, newC);
         Optional<Path> oldSrc, newSrc;
         try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
             var oldF = CompletableFuture.supplyAsync(() -> downloader.downloadSources(oldC), exec);
@@ -31,12 +35,19 @@ public class SourceDiffService {
             oldSrc = oldF.join();
             newSrc = newF.join();
         }
-        if (oldSrc.isEmpty() || newSrc.isEmpty()) return Optional.empty();
+        if (oldSrc.isEmpty() || newSrc.isEmpty()) {
+            LOG.warnf("One or both source JARs missing for %s and %s", oldC, newC);
+            return Optional.empty();
+        }
 
         String srcPath = fqnToSourcePath(fqn);
+        LOG.debugf("Extracted source path for %s: %s", fqn, srcPath);
         Optional<String> oldCode = extractEntry(oldSrc.get(), srcPath);
         Optional<String> newCode = extractEntry(newSrc.get(), srcPath);
-        if (oldCode.isEmpty() || newCode.isEmpty()) return Optional.empty();
+        if (oldCode.isEmpty() || newCode.isEmpty()) {
+            LOG.warnf("Source entry %s not found in one or both source JARs", srcPath);
+            return Optional.empty();
+        }
 
         return Optional.of(unifiedDiff(fqn, oldC, newC, oldCode.get(), newCode.get()));
     }
@@ -58,6 +69,7 @@ public class SourceDiffService {
                 return Optional.of(new String(is.readAllBytes(), StandardCharsets.UTF_8));
             }
         } catch (IOException e) {
+            LOG.errorf(e, "Error extracting entry %s from %s", entryPath, jar);
             return Optional.empty();
         }
     }

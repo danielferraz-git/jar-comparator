@@ -9,6 +9,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import japicmp.model.JApiClass;
 import japicmp.model.AccessModifier;
+import org.jboss.logging.Logger;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -17,6 +18,8 @@ import java.util.concurrent.Executors;
 @Path("/")
 @ApplicationScoped
 public class JarComparatorResource {
+
+    private static final Logger LOG = Logger.getLogger(JarComparatorResource.class);
 
     @Inject MavenCentralDownloader downloader;
     @Inject JarComparisonService comparisonService;
@@ -42,6 +45,9 @@ public class JarComparatorResource {
             @FormParam("accessModifier") @DefaultValue("PUBLIC") String accessModifierParam,
             @FormParam("ignoreMissingClasses") @DefaultValue("false") String ignoreMissingClassesParam,
             @FormParam("onlyIncompatible") @DefaultValue("false") String onlyIncompatibleParam) {
+
+        LOG.infof("Web Request: compare %s vs %s (access=%s, ignoreMissing=%s, onlyIncompat=%s)",
+                oldVersion, newVersion, accessModifierParam, ignoreMissingClassesParam, onlyIncompatibleParam);
 
         try {
             MavenCoordinates oldC = MavenCoordinates.parse(oldVersion);
@@ -70,6 +76,7 @@ public class JarComparatorResource {
             return htmlReportGenerator.generateHtml(results, oldC, newC);
 
         } catch (Exception e) {
+            LOG.errorf(e, "Error during web comparison of %s and %s", oldVersion, newVersion);
             return errorPage(e.getMessage());
         }
     }
@@ -81,16 +88,26 @@ public class JarComparatorResource {
             @QueryParam("class") String className,
             @QueryParam("old")   String oldVersion,
             @QueryParam("new")   String newVersion) {
+        LOG.infof("Web Request: source-diff for %s between %s and %s", className, oldVersion, newVersion);
+
         if (className == null || !className.matches("[\\w.$]+")) {
+            LOG.warnf("Invalid class name requested for diff: %s", className);
             return Response.status(400).entity("Invalid class name").build();
         }
         try {
             MavenCoordinates oldC = MavenCoordinates.parse(oldVersion);
             MavenCoordinates newC = MavenCoordinates.parse(newVersion);
             return sourceDiffService.diff(oldC, newC, className)
-                .map(diff -> Response.ok(diff).build())
-                .orElse(Response.status(404).entity("Source not available for this artifact").build());
+                .map(diff -> {
+                    LOG.infof("Source diff generated for %s", className);
+                    return Response.ok(diff).build();
+                })
+                .orElseGet(() -> {
+                    LOG.warnf("Source not available for %s", className);
+                    return Response.status(404).entity("Source not available for this artifact").build();
+                });
         } catch (Exception e) {
+            LOG.errorf(e, "Error during source diff for %s", className);
             return Response.status(500).entity(e.getMessage()).build();
         }
     }

@@ -4,6 +4,7 @@ import io.quarkus.picocli.runtime.annotations.TopCommand;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import japicmp.model.*;
+import org.jboss.logging.Logger;
 import picocli.CommandLine.*;
 
 import java.io.IOException;
@@ -24,6 +25,8 @@ import java.util.function.Predicate;
 @TopCommand
 @Dependent
 public class JarComparatorCommand implements Callable<Integer> {
+
+    private static final Logger LOG = Logger.getLogger(JarComparatorCommand.class);
 
     private static final Predicate<JApiClass> IS_INCOMPATIBLE =
         c -> !c.isBinaryCompatible() || !c.isSourceCompatible();
@@ -63,6 +66,9 @@ public class JarComparatorCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
+        LOG.infof("CLI Request: comparing %s vs %s (access=%s, onlyIncompat=%b)",
+                oldCoord, newCoord, accessModifier, onlyIncompatible);
+
         MavenCoordinates oldC = MavenCoordinates.parse(oldCoord);
         MavenCoordinates newC = MavenCoordinates.parse(newCoord);
 
@@ -83,11 +89,13 @@ public class JarComparatorCommand implements Callable<Integer> {
         printTextReport(results, oldC, newC);
 
         if (htmlOutput != null) {
+            LOG.infof("Generating HTML report at: %s", htmlOutput);
             Path parent = htmlOutput.toAbsolutePath().getParent();
             if (parent != null) {
                 try {
                     Files.createDirectories(parent);
                 } catch (IOException e) {
+                    LOG.errorf(e, "Cannot create output directory: %s", parent);
                     throw new JarComparatorException("Cannot create output directory: " + parent, e);
                 }
             }

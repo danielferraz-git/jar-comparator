@@ -5,6 +5,7 @@ import io.quarkus.qute.Template;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import japicmp.model.*;
+import org.jboss.logging.Logger;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -17,11 +18,14 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class HtmlReportGenerator {
 
+    private static final Logger LOG = Logger.getLogger(HtmlReportGenerator.class);
+
     @Inject
     @Location("report.html")
     Template reportTemplate;
 
     public String generateHtml(List<JApiClass> classes, MavenCoordinates oldC, MavenCoordinates newC) {
+        LOG.infof("Generating HTML report for %d classes (%s -> %s)", classes.size(), oldC, newC);
         String oldCoord = oldC.toString();
         String newCoord = newC.toString();
         List<ClassRow> rows = classes.stream()
@@ -39,10 +43,12 @@ public class HtmlReportGenerator {
     }
 
     public void generate(List<JApiClass> classes, MavenCoordinates oldC, MavenCoordinates newC, Path outputPath) {
+        LOG.infof("Writing HTML report to file: %s", outputPath);
         String html = generateHtml(classes, oldC, newC);
         try (PrintWriter w = new PrintWriter(Files.newBufferedWriter(outputPath))) {
             w.print(html);
         } catch (IOException e) {
+            LOG.errorf(e, "Failed to write HTML report to %s", outputPath);
             throw new RuntimeException("Failed to write HTML report to " + outputPath + ": " + e.getMessage(), e);
         }
     }
