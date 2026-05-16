@@ -1,1 +1,22 @@
+# Maven build output
 target/
+
+# IDE — IntelliJ IDEA
+.idea/
+*.iml
+
+# IDE — VS Code
+.vscode/
+
+# IDE — Eclipse
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local env / secrets
+*.env
+.env
