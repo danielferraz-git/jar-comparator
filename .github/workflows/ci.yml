@@ -21,7 +21,6 @@ jobs:
           cache: maven
 
       - name: Build JVM artifact
-        working-directory: jar-comparator
         run: mvn clean package -q
 
       - name: Upload JAR
@@ -29,9 +28,9 @@ jobs:
         with:
           name: jar-artifact
           path: |
-            jar-comparator/target/*.jar
-            !jar-comparator/target/*-sources.jar
-            !jar-comparator/target/*-javadoc.jar
+            target/*.jar
+            !target/*-sources.jar
+            !target/*-javadoc.jar
 
   build-native:
     runs-on: ubuntu-latest
@@ -47,7 +46,6 @@ jobs:
           cache: maven
 
       - name: Build native executable
-        working-directory: jar-comparator
         run: |
           mvn clean package \
             -Pnative \
@@ -58,4 +56,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: native-artifact
-          path: jar-comparator/target/*-runner
+          path: target/*-runner
