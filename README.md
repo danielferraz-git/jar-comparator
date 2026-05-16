@@ -6,7 +6,10 @@
 
 Detect breaking API changes between two versions of any Maven artifact — in your browser or from the terminal.
 
-![screenshot placeholder](docs/screenshot.png)
+![screenshot placeholder](docs/example-1.png)
+![screenshot placeholder](docs/example-2.png)
+![screenshot placeholder](docs/example-3.png)
+![screenshot placeholder](docs/example-4.png)
 
 ## Features
 
