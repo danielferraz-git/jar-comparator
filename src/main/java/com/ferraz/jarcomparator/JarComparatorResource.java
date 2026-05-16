@@ -35,6 +35,27 @@ public class JarComparatorResource {
         return formTemplate.render();
     }
 
+    @GET
+    @Path("/{groupId}/{artifactId}")
+    @Produces(MediaType.TEXT_HTML)
+    public String compareGet(
+            @PathParam("groupId") String groupId,
+            @PathParam("artifactId") String artifactId,
+            @QueryParam("oldVersion") String oldVersion,
+            @QueryParam("newVersion") String newVersion,
+            @QueryParam("accessModifier") @DefaultValue("PUBLIC") String accessModifierParam,
+            @QueryParam("ignoreMissingClasses") @DefaultValue("true") String ignoreMissingClassesParam,
+            @QueryParam("onlyIncompatible") @DefaultValue("false") String onlyIncompatibleParam) {
+
+        if (oldVersion == null || oldVersion.isBlank() || newVersion == null || newVersion.isBlank()) {
+            return errorPage("Missing oldVersion or newVersion query parameters");
+        }
+        return doCompare(
+            groupId + ":" + artifactId + ":" + oldVersion,
+            groupId + ":" + artifactId + ":" + newVersion,
+            accessModifierParam, ignoreMissingClassesParam, onlyIncompatibleParam);
+    }
+
     @POST
     @Path("/compare")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -46,12 +67,22 @@ public class JarComparatorResource {
             @FormParam("ignoreMissingClasses") @DefaultValue("false") String ignoreMissingClassesParam,
             @FormParam("onlyIncompatible") @DefaultValue("false") String onlyIncompatibleParam) {
 
+        return doCompare(oldVersion, newVersion, accessModifierParam, ignoreMissingClassesParam, onlyIncompatibleParam);
+    }
+
+    private String doCompare(String oldVersion, String newVersion,
+            String accessModifierParam, String ignoreMissingClassesParam, String onlyIncompatibleParam) {
+
         LOG.infof("Web Request: compare %s vs %s (access=%s, ignoreMissing=%s, onlyIncompat=%s)",
                 oldVersion, newVersion, accessModifierParam, ignoreMissingClassesParam, onlyIncompatibleParam);
 
         try {
             MavenCoordinates oldC = MavenCoordinates.parse(oldVersion);
             MavenCoordinates newC = MavenCoordinates.parse(newVersion);
+
+            if (oldC.version().equals(newC.version())) {
+                return errorPage("Old and new versions are the same (" + oldC.version() + "). Please provide two different versions to compare.");
+            }
 
             AccessModifier accessModifier = parseAccessModifier(accessModifierParam);
             boolean ignoreMissingClasses = "true".equalsIgnoreCase(ignoreMissingClassesParam);

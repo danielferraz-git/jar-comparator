@@ -33,10 +33,12 @@ public class HtmlReportGenerator {
             .toList();
         long incompatibleCount = rows.stream().filter(ClassRow::incompatible).count();
 
+        String groupArtifact = oldC.groupId() + ":" + oldC.artifactId();
         return reportTemplate
             .data("rows", rows)
             .data("oldCoord", oldCoord)
             .data("newCoord", newCoord)
+            .data("groupArtifact", groupArtifact)
             .data("totalCount", classes.size())
             .data("incompatibleCount", incompatibleCount)
             .render();
